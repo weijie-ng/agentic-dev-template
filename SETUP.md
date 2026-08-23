@@ -29,36 +29,62 @@ inside the container.
 | `package.json` + `package-lock.json` | OpenSpec CLI as a repo-local dependency + the `update:tools` script |
 | `.devcontainer/devcontainer.json` | Dev container: installs Claude Code, runs `npm install`, auto-updates the tools on start |
 
-## Version policy — always latest
+## Version policy — latest, but with a 7-day delay
 
-Versions are **not pinned for the long term**; the setup pulls the newest versions:
+Versions are **not pinned long-term**; the setup pulls the newest versions that are **at
+least 7 days old**. That delay mirrors the host environment's package-age policy and avoids
+adopting a same-day release before it has settled.
 
-- **On every container start**, `postStartCommand` runs `npm run update:tools`, which:
-  1. `npm install @fission-ai/openspec@latest` — updates the OpenSpec CLI,
-  2. `openspec update` — refreshes the generated `/opsx` files to match, and
-  3. `npx --yes impeccable@latest update` — updates the impeccable skill to latest.
+- **On every container start**, `postStartCommand` runs `npm run update:tools`, which runs
+  `scripts/update-tools.mjs`. That script:
+  1. computes `before = now − 7 days` and sets `npm_config_before` for its child processes
+     (so npm/npx only resolve versions published on or before that cutoff),
+  2. `npm install @fission-ai/openspec@latest` — newest OpenSpec CLI ≥ 7 days old,
+  3. `openspec update` — refreshes the generated `/opsx` files to match, and
+  4. `npx --yes impeccable@latest update` — newest impeccable skill ≥ 7 days old.
 - It's a **no-op when everything is already current**, so it only changes files when there's
   a genuine update to adopt. Commit those changes to record the bump.
-- **impeccable's CLI is inherently always-latest** because it runs via `npx impeccable@latest`.
+- The `before` cutoff is scoped to the script's child processes only — it does **not** modify
+  any global or user `~/.npmrc`.
 
-> ⚠️ **npm date-cutoff on this machine.** This workspace's npm won't install packages
-> published after ~2026-08-16, so `@latest` resolves to **OpenSpec 1.9.0** here even though
-> **1.10.0 exists**. A normal machine without that cutoff will auto-update to 1.10.0 and
-> beyond. Nothing to fix — it's an environment policy, not a repo setting.
+> **How the delay is enforced:** npm honors the `before` setting via the `npm_config_before`
+> environment variable, constraining version resolution to releases published on/before that
+> timestamp. Verified: with `before=2026-07-15`, `@latest` resolves to `1.6.0`; with the live
+> cutoff it resolves to `1.9.0`. The window rolls forward automatically as time passes.
 
-> **Trade-off:** tracking latest means two machines built at different times may run
-> different tool versions (freshness over strict lockstep). `package-lock.json` still records
-> the exact versions each commit used, so any single checkout is reproducible.
+> **On the original (host) machine**, npm *also* enforces its own ~7-day registry cutoff, so
+> `@latest` there is capped at **OpenSpec 1.9.0** (1.10.0 exists but is younger than 7 days).
+> The container now applies the same 7-day rule itself, so both environments behave the same.
+
+> **Trade-off:** tracking latest means two machines updated at different times may run
+> slightly different tool versions (freshness over strict lockstep). `package-lock.json` still
+> records the exact versions each commit used, so any single checkout is reproducible.
 
 ## Recommended path: clone + dev container
 
 1. Install **Docker Desktop**, **VS Code**, and the **Dev Containers** extension.
 2. Clone this repo and open it in VS Code.
 3. Command Palette → **Dev Containers: Reopen in Container**.
-4. First build installs the **Claude Code CLI** and runs `npm install`; **each start** then
-   auto-updates impeccable + OpenSpec to latest. `node_modules/.bin` is on the container
-   `PATH`, so the bare `openspec` the `/opsx` skills call resolves to the repo-local CLI.
+4. First build **chowns the `~/.claude` volume to the `node` user** (so credentials and
+   transcripts can be written), installs the **Claude Code CLI**, and runs `npm install`;
+   **each start** then auto-updates impeccable + OpenSpec (7-day delay). `node_modules/.bin`
+   is on the container `PATH`, so the bare `openspec` the `/opsx` skills call resolves to the
+   repo-local CLI.
 5. Run `claude` in a container terminal and sign in once — auth persists across rebuilds.
+
+### Troubleshooting: login isn't remembered / `EACCES` transcript writes
+
+Both symptoms mean the `node` user can't write to the `~/.claude` volume (it's root-owned
+until chowned). If you hit this in an **already-running** container (built before this fix),
+run once in the container terminal, then sign in again:
+
+```bash
+sudo chown -R node:node /home/node/.claude
+```
+
+Rebuilding the container applies the fix automatically (it's in `postCreateCommand`). If the
+browser sign-in completes but the container never receives the callback, copy the code shown
+in the browser and paste it at the `Paste code here if prompted` prompt.
 
 ## Update the tools manually (any time)
 

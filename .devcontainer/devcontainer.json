@@ -38,9 +38,13 @@
     "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}"
   },
 
-  // On (re)build: install the repo's dependencies (vendors the OpenSpec CLI into
-  // node_modules). impeccable ships as committed skill files under .claude/.
-  "postCreateCommand": "npm install",
+  // On (re)build:
+  //  1. Fix ownership of the ~/.claude volume. A named volume is created root-owned,
+  //     but Claude Code runs as `node`, so without this it CAN'T persist credentials
+  //     (login "succeeds" but is forgotten next start) or write transcripts (EACCES).
+  //  2. Install the repo's dependencies (vendors the OpenSpec CLI into node_modules).
+  // impeccable ships as committed skill files under .claude/, so it needs no install.
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude 2>/dev/null || true; npm install",
 
   // On every container start: pull the OpenSpec CLI and impeccable up to the latest
   // published versions. It's a no-op when they're already current, so it only makes
