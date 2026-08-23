@@ -27,8 +27,13 @@
   // CLAUDE_CONFIG_DIR at the same path keeps ~/.claude.json (OAuth account, MCP
   // servers, per-project trust) inside the volume too. ${devcontainerId} scopes
   // the volume to this repo so other projects don't share its login state.
+  //
+  // A second volume at /commandhistory persists bash history so arrow-up recall
+  // survives "Rebuild Container". HISTFILE is pointed there by
+  // .devcontainer/persist-bash-history.sh (appended to ~/.bashrc in postCreate).
   "mounts": [
-    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=command-history-${devcontainerId},target=/commandhistory,type=volume"
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
@@ -39,18 +44,31 @@
   // Put the repo-local CLIs on PATH so the bare `openspec` calls the /opsx skills
   // make resolve to THIS repo's pinned version in node_modules/.bin — no global
   // install needed. (The OpenSpec CLI is a devDependency in package.json.)
+  //
+  // Forward the GitHub token from the HOST into the container for the `github` MCP
+  // plugin (its .mcp.json sends `Authorization: Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}`).
+  // ${localEnv:...} reads the host's env var at container start, so the token is never
+  // stored in the container volume or committed to the repo — consistent with
+  // "credentials stay on the host and are forwarded in".
+  // Prerequisite on the host (once):
+  //   setx GITHUB_PERSONAL_ACCESS_TOKEN "<token>"   # e.g. $(gh auth token)
+  // then FULLY restart VS Code so it inherits the var, and Rebuild Container.
   "remoteEnv": {
-    "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}"
+    "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}",
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}"
   },
 
   // On (re)build:
-  //  1. Fix ownership of the ~/.claude volume (created root-owned, but Claude Code runs
-  //     as `node`) so it can persist credentials and write transcripts (avoids EACCES).
-  //  2. Install dependencies, then update impeccable + OpenSpec to the newest versions
+  //  1. Fix ownership of the ~/.claude and /commandhistory volumes (created root-owned,
+  //     but the shell + Claude Code run as `node`) so they can persist credentials,
+  //     transcripts, and bash history (avoids EACCES).
+  //  2. Append the bash-history persistence snippet to ~/.bashrc (idempotent: the grep
+  //     guard means it is added once per fresh container filesystem, never duplicated).
+  //  3. Install dependencies, then update impeccable + OpenSpec to the newest versions
   //     allowed by the delay window. Doing this on REBUILD (not every start) keeps
   //     container startup fast and quiet — updating each start re-fetches impeccable
   //     via npx and floods the terminal.
-  "postCreateCommand": "sudo chown -R node:node /home/node/.claude 2>/dev/null || true; npm install && (npm run update:tools || true)",
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true)",
 
   // No postStartCommand on purpose: refresh tools any time with `npm run update:tools`,
   // or by rebuilding the container.
