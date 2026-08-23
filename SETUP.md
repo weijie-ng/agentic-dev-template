@@ -67,7 +67,8 @@ adopting a same-day release before it has settled.
 ## Recommended path: clone + dev container
 
 1. Install **Docker Desktop**, **VS Code**, and the **Dev Containers** extension.
-2. Clone this repo and open it in VS Code.
+2. Clone this repo and open it in VS Code. **On Windows, clone into the WSL2 filesystem, not a
+   `C:\` path** — see the note below.
 3. Command Palette → **Dev Containers: Reopen in Container**.
 4. Each build **chowns the `~/.claude` volume to the `node` user** (so credentials and
    transcripts can be written), installs the **Claude Code CLI**, runs `npm install`, and
@@ -75,6 +76,19 @@ adopting a same-day release before it has settled.
    is on the container `PATH`, so the bare `openspec` the `/opsx` skills call resolves to the
    repo-local CLI.
 5. Run `claude` in a container terminal and sign in once — auth persists across rebuilds.
+
+> **Windows: clone into WSL2, not `C:\`.** Opening the container from a Windows folder
+> bind-mounts the workspace over 9p/drvfs — it's slow, and it can surface transient file-stat
+> errors while editing (`ENOENT` on a file that plainly exists) because the metadata cache lags
+> a write. Clone into the WSL2 distro's native ext4 home instead, then open from there:
+>
+> ```bash
+> # in a WSL2 distro terminal (Ubuntu, etc.) — NOT under /mnt/c
+> git clone https://github.com/weijie-ng/digital-garden.git ~/digital-garden
+> code ~/digital-garden        # then: Dev Containers: Reopen in Container
+> ```
+>
+> Verify inside the container: `mount | grep "$(pwd)"` should show ext4/overlay, not `9p`.
 
 ### Troubleshooting: login isn't remembered / `EACCES` transcript writes
 
