@@ -84,8 +84,8 @@ adopting a same-day release before it has settled.
 >
 > ```bash
 > # in a WSL2 distro terminal (Ubuntu, etc.) — NOT under /mnt/c
-> git clone https://github.com/weijie-ng/digital-garden.git ~/digital-garden
-> code ~/digital-garden        # then: Dev Containers: Reopen in Container
+> git clone https://github.com/weijie-ng/agentic-dev-template.git ~/agentic-dev-template
+> code ~/agentic-dev-template        # then: Dev Containers: Reopen in Container
 > ```
 >
 > Verify inside the container: `mount | grep "$(pwd)"` should show ext4/overlay, not `9p`.
@@ -187,7 +187,7 @@ Keeps the private key on the host and forwards the running `ssh-agent` into the 
    GitHub account if it isn't already), and the OpenSSH agent service is running.
 2. Point this repo at the SSH remote:
    ```bash
-   git remote set-url origin git@github.com:weijie-ng/digital-garden.git
+   git remote set-url origin git@github.com:weijie-ng/agentic-dev-template.git
    ```
 3. VS Code forwards the agent automatically; `git push` in the container uses it. Works in any
    container terminal, not just VS Code's.

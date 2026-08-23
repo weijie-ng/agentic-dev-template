@@ -1,8 +1,8 @@
 {
-  // Dev container for the digital-garden repo.
+  // Dev container for the agentic-dev-template repo.
   // Docs: https://code.claude.com/docs/en/devcontainer
   // Open with VS Code / Cursor "Dev Containers: Reopen in Container", or in GitHub Codespaces.
-  "name": "digital-garden",
+  "name": "agentic-dev-template",
 
   // Node 22 base image: ships Node/npm and a non-root `node` user, so the
   // Claude Code feature doesn't have to install Node, and impeccable (npx) +
