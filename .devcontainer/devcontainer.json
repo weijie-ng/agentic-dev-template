@@ -50,9 +50,24 @@
   // ${localEnv:...} reads the host's env var at container start, so the token is never
   // stored in the container volume or committed to the repo — consistent with
   // "credentials stay on the host and are forwarded in".
-  // Prerequisite on the host (once):
-  //   setx GITHUB_PERSONAL_ACCESS_TOKEN "<token>"   # e.g. $(gh auth token)
-  // then FULLY restart VS Code so it inherits the var, and Rebuild Container.
+  //
+  // Prerequisite on the host (once). `${localEnv:...}` is read from the environment of
+  // the VS Code process that launches the container, so it is NOT enough to export the
+  // var in some other shell — VS Code itself has to have inherited it.
+  //
+  //   WSL2 host (this repo's recommended setup — see SETUP.md):
+  //     echo 'export GITHUB_PERSONAL_ACCESS_TOKEN="'"$(gh auth token)"'"' >> ~/.bashrc
+  //     # then quit VS Code COMPLETELY (all windows) and relaunch it from that same
+  //     # WSL shell with `code .`, so the VS Code server inherits the export.
+  //
+  //   Windows host (repo on an NTFS path):
+  //     setx GITHUB_PERSONAL_ACCESS_TOKEN "<token>"
+  //     # then FULLY restart VS Code — setx only reaches newly-started processes.
+  //
+  // Then Rebuild Container. Verify inside the container with:
+  //   [ -n "$GITHUB_PERSONAL_ACCESS_TOKEN" ] && echo forwarded || echo EMPTY
+  // An EMPTY result means the container got the var but the host side was blank, which
+  // makes the github MCP server send `Authorization: Bearer ` and fail with HTTP 400.
   "remoteEnv": {
     "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}",
     "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_PERSONAL_ACCESS_TOKEN}"
