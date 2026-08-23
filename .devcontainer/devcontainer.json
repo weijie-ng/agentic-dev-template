@@ -68,7 +68,11 @@
   //     allowed by the delay window. Doing this on REBUILD (not every start) keeps
   //     container startup fast and quiet — updating each start re-fetches impeccable
   //     via npx and floods the terminal.
-  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true)",
+  //  4. Install Google Chrome (+ its OS libraries) so the `chrome-devtools` MCP server
+  //     (.mcp.json) can drive a real browser. The slim base image ships neither Chrome
+  //     nor its runtime libs. Idempotent + `|| true` so it never blocks the build.
+  //     See .devcontainer/install-chrome.sh.
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true); (bash .devcontainer/install-chrome.sh || true)",
 
   // No postStartCommand on purpose: refresh tools any time with `npm run update:tools`,
   // or by rebuilding the container.

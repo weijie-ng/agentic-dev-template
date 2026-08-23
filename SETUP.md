@@ -28,6 +28,8 @@ inside the container.
 | `openspec/` | OpenSpec specs, changes, and `config.yaml` |
 | `package.json` + `package-lock.json` | OpenSpec CLI as a repo-local dependency + the `update:tools` script |
 | `.devcontainer/devcontainer.json` | Dev container: installs Claude Code, runs `npm install`, auto-updates the tools on start |
+| `.mcp.json` | Chrome DevTools MCP server (`chrome-devtools`), configured headless + sandbox-less for the container |
+| `.devcontainer/install-chrome.sh` | Installs Google Chrome (+ its OS libraries); run from `postCreateCommand` |
 
 ## Version policy — latest, but with a 7-day delay
 
@@ -103,6 +105,30 @@ container between restarts.
 3. The `/opsx` skills call a bare `openspec`. Either add `./node_modules/.bin` to your `PATH`
    (recommended), or run via `npm run openspec -- <args>` / `npx openspec <args>`.
 4. Keep tools current with `npm run update:tools`.
+
+## Chrome DevTools MCP server (browser automation)
+
+`.mcp.json` registers the [`chrome-devtools`](https://github.com/ChromeDevTools/chrome-devtools-mcp)
+MCP server (project scope, so it travels with the repo like the other tooling). It lets Claude
+Code drive a real Chrome — navigate, inspect the DOM/network, run performance traces, screenshot.
+
+It's configured for this headless Linux container:
+
+- `--headless` — no display in the container.
+- `--isolated` — a throwaway Chrome profile that's cleaned up on exit.
+- `--chromeArg=--no-sandbox --chromeArg=--disable-setuid-sandbox` — **required here.** WSL2
+  disables unprivileged user namespaces, so Chrome's sandbox can't start; without these flags
+  Chrome aborts with *"No usable sandbox!"*.
+
+On (re)build, `postCreateCommand` runs `.devcontainer/install-chrome.sh`, which installs
+**Google Chrome and its OS libraries** (the slim base image ships neither). A *system* Chrome
+is what the server needs: chrome-devtools-mcp resolves the browser by channel, and the default
+`stable` channel looks for a system install at `/opt/google/chrome/chrome` — it does **not**
+fall back to the Chrome for Testing that puppeteer caches. The script is idempotent, so you can
+run it by hand any time: `bash .devcontainer/install-chrome.sh`.
+
+> Trust prompt: because `.mcp.json` is project-scoped, Claude Code asks you to approve the
+> server the first time you open the project in the container. Approve it once.
 
 ## GitHub auth: keep credentials on the host and forward them
 
