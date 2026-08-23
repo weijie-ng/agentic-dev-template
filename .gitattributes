@@ -1,0 +1,14 @@
+# Normalize line endings so scripts/hooks behave the same on Windows, macOS,
+# and inside the Linux dev container. LF everywhere avoids CRLF breaking the
+# impeccable hook (.mjs) and any shell scripts.
+* text=auto eol=lf
+
+# Binary types git shouldn't touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

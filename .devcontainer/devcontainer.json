@@ -1,0 +1,62 @@
+{
+  // Dev container for the digital-garden repo.
+  // Docs: https://code.claude.com/docs/en/devcontainer
+  // Open with VS Code / Cursor "Dev Containers: Reopen in Container", or in GitHub Codespaces.
+  "name": "digital-garden",
+
+  // Node 22 base image: ships Node/npm and a non-root `node` user, so the
+  // Claude Code feature doesn't have to install Node, and impeccable (npx) +
+  // the OpenSpec CLI work out of the box.
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+
+  // Installs the latest Claude Code CLI and the VS Code extension into the container.
+  // The `:1.0` tag pins the feature's install script, not the Claude Code release.
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+
+  // Run as non-root. Required if you ever pass --dangerously-skip-permissions,
+  // and it keeps container-created files owned by a normal user.
+  "remoteUser": "node",
+
+  // Persist Claude Code auth + settings across rebuilds.
+  // A named volume at ~/.claude keeps credentials/session history, and pointing
+  // CLAUDE_CONFIG_DIR at the same path keeps ~/.claude.json (OAuth account, MCP
+  // servers, per-project trust) inside the volume too. ${devcontainerId} scopes
+  // the volume to this repo so other projects don't share its login state.
+  "mounts": [
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+  },
+
+  // Put the repo-local CLIs on PATH so the bare `openspec` calls the /opsx skills
+  // make resolve to THIS repo's pinned version in node_modules/.bin — no global
+  // install needed. (The OpenSpec CLI is a devDependency in package.json.)
+  "remoteEnv": {
+    "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}"
+  },
+
+  // On (re)build: install the repo's dependencies (vendors the OpenSpec CLI into
+  // node_modules). impeccable ships as committed skill files under .claude/.
+  "postCreateCommand": "npm install",
+
+  // On every container start: pull the OpenSpec CLI and impeccable up to the latest
+  // published versions. It's a no-op when they're already current, so it only makes
+  // changes when there's a real update to adopt. `|| true` stops a transient network
+  // hiccup from blocking the container from starting.
+  "postStartCommand": "npm run update:tools || true",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  }
+
+  // Add a dev server port here once the site has one, e.g.:
+  // "forwardPorts": [4321]   // Astro
+  // "forwardPorts": [3000]   // Next.js
+}

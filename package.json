@@ -1,0 +1,16 @@
+{
+  "name": "digital-garden",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Digital garden with repo-local AI tooling: OpenSpec (spec-driven workflow) is a pinned dev dependency; impeccable (design) ships as committed skill files under .claude/.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "openspec": "openspec",
+    "update:tools": "npm install @fission-ai/openspec@latest && openspec update && npx --yes impeccable@latest update"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.9.0"
+  }
+}

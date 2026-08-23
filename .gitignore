@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output (framework-specific — uncomment/add as the garden grows)
+dist/
+build/
+.next/
+.astro/
+.output/
+.svelte-kit/
+.vercel/
+
+# Environment / secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# Logs & caches
+*.log
+npm-debug.log*
+.cache/
+.turbo/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# NOT ignored (intentional): .claude/ and openspec/ ARE the impeccable + OpenSpec
+# setup and must travel with the repo so another machine gets the same behavior.
+# Credentials never live in the project .claude/ — they live in ~/.claude (or the
+# dev container's named volume), so committing .claude/ is safe.
+# ---------------------------------------------------------------------------
