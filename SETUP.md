@@ -23,7 +23,7 @@ inside the container.
 | Path | What it is |
 |------|-----------|
 | `.claude/skills/impeccable/` | Impeccable design skill + detector rules (runs from committed scripts) |
-| `.claude/settings.json` | Project env + status line + `enabledPlugins` (the Claude Code plugin set this repo expects) |
+| `.claude/settings.json` | Project env + status line + `enabledPlugins` / `extraKnownMarketplaces` (the Claude Code plugin set this repo expects, and where it comes from) |
 | `.claude/settings.local.json` | Impeccable design-detector hooks (portable, project-relative) |
 | `.claude/skills/openspec-*/`, `.claude/commands/opsx/` | OpenSpec skills + `/opsx:*` commands |
 | `openspec/` | OpenSpec specs, changes, and `config.yaml` |
@@ -31,6 +31,7 @@ inside the container.
 | `.devcontainer/devcontainer.json` | Dev container: installs Claude Code, runs `npm install`, auto-updates the tools on start |
 | `.mcp.json` | Chrome DevTools MCP server (`chrome-devtools`), configured headless + sandbox-less for the container |
 | `.devcontainer/install-chrome.sh` | Installs Google Chrome (+ its OS libraries); run from `postCreateCommand` |
+| `scripts/install-plugins.mjs` | Pre-installs the pinned Claude Code plugins so a fresh clone never races the background download; run from `postCreateCommand`, or `npm run setup:plugins` |
 
 ## Version policy — latest, but with a 7-day delay
 
@@ -148,13 +149,30 @@ run it by hand any time: `bash .devcontainer/install-chrome.sh`.
 ## Claude Code plugins (reproducible tooling)
 
 The Claude Code plugins this repo uses are pinned in `.claude/settings.json` under
-`enabledPlugins` (all from the official `claude-plugins-official` marketplace, which Claude
-Code makes known to every user automatically). That declaration is what travels with the repo.
+`enabledPlugins`, with the marketplace they come from declared alongside in
+`extraKnownMarketplaces`. That declaration is what travels with the repo, and it is the single
+source of truth for the set.
 
-There's no install step to run: when you open the repo and start `claude`, Claude Code
-provisions the enabled plugins from the marketplace on session start — it downloads any that are
-missing into its plugin cache and loads them (the first launch may pause briefly while it
-fetches them). `.claude/settings.json` is the single source of truth for the set.
+`enabledPlugins` only *enables* the plugins — it does not put them on disk. Claude Code
+downloads whatever is missing into its plugin cache, but it does that **in the background as the
+first session starts**, so on a fresh clone an early session (or a `/reload-plugins` fired while
+the download is still running) loads only the plugins that have landed and reports the rest as
+load errors. The larger ones — `superpowers`, `vercel` — lose that race most often.
+
+So the dev container pre-installs them at build time: `postCreateCommand` runs
+`npm run setup:plugins` (`scripts/install-plugins.mjs`), which reads `enabledPlugins` from
+`.claude/settings.json`, makes sure the marketplace is cloned, and installs each plugin *before*
+Claude Code ever starts. It needs no Claude login (marketplaces are public git clones), it is
+idempotent, and it takes ~8s when everything is already present.
+
+**Outside the dev container** (or after a plugin load error), run it yourself:
+
+```bash
+npm run setup:plugins
+```
+
+Then restart Claude Code. Adding a plugin to `enabledPlugins` and re-running the same command is
+all it takes to roll it out to everyone.
 
 **Reproducible vs. per-user:** the plugin *set* travels with the repo. Plugins that expose
 authenticated HTTP MCP servers — `github`, `vercel`, `context7` — still need **each user to

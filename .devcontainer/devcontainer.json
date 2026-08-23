@@ -72,7 +72,15 @@
   //     (.mcp.json) can drive a real browser. The slim base image ships neither Chrome
   //     nor its runtime libs. Idempotent + `|| true` so it never blocks the build.
   //     See .devcontainer/install-chrome.sh.
-  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true); (bash .devcontainer/install-chrome.sh || true)",
+  //  5. Pre-install the plugins pinned in .claude/settings.json → enabledPlugins.
+  //     `enabledPlugins` only ENABLES them; on a fresh clone Claude Code still has to
+  //     clone the marketplace and download each plugin, and it does that in the
+  //     background as the first session starts — so an early session (or a
+  //     /reload-plugins fired mid-download) reports the not-yet-fetched ones as load
+  //     errors. Doing it here means they are on disk before Claude Code ever runs.
+  //     Needs no Claude login (public git clones). Idempotent + `|| true`.
+  //     See scripts/install-plugins.mjs; re-run any time with `npm run setup:plugins`.
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true); (bash .devcontainer/install-chrome.sh || true); (npm run setup:plugins || true)",
 
   // No postStartCommand on purpose: refresh tools any time with `npm run update:tools`,
   // or by rebuilding the container.

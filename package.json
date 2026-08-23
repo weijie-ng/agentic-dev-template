@@ -8,6 +8,7 @@
   },
   "scripts": {
     "openspec": "openspec",
+    "setup:plugins": "node scripts/install-plugins.mjs",
     "update:tools": "node scripts/update-tools.mjs"
   },
   "devDependencies": {
