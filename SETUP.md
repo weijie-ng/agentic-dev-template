@@ -103,6 +103,29 @@ container between restarts.
    (recommended), or run via `npm run openspec -- <args>` / `npx openspec <args>`.
 4. Keep tools current with `npm run update:tools`.
 
+## GitHub auth inside the container (push/pull from the container)
+
+Your host authenticates to GitHub through Windows Git Credential Manager + the keyring —
+there is **no PAT file**, and none of that reaches the Linux container. The dev container
+installs the **GitHub CLI** and persists its login in a volume, so you authenticate **once**:
+
+1. Rebuild the container (to pick up the `github-cli` feature), then in a container terminal:
+   ```bash
+   gh auth login          # choose GitHub.com → HTTPS → "Login with a web browser",
+                          # then open the URL and enter the one-time code
+   gh auth setup-git      # makes git use gh as the credential helper
+   ```
+2. Now `git push` / `git pull` work from inside the container as `weijie-ng`. The login is
+   saved in the `gh-config` volume, so you won't need to repeat it after future rebuilds.
+
+**Alternatives:**
+- **VS Code credential forwarding** — if you use the VS Code integrated terminal, VS Code
+  often forwards your host git credentials automatically; try `git push` before setting up
+  `gh` at all.
+- **Push from the host** — perfectly fine: develop/run in the container, and run
+  `git push` / `git pull` from a host terminal (already authed as `weijie-ng`). No secrets
+  ever enter the container.
+
 ## First-time git push (from the original machine)
 
 ```bash

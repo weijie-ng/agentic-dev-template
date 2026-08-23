@@ -1,0 +1,11 @@
+{
+  "env": {
+    "IMPECCABLE_NO_TELEMETRY": "1",
+    "OPENSPEC_TELEMETRY": "0",
+    "DO_NOT_TRACK": "1"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/statusline-command.sh\""
+  }
+}
