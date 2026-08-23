@@ -23,6 +23,7 @@ inside the container.
 | Path | What it is |
 |------|-----------|
 | `.claude/skills/impeccable/` | Impeccable design skill + detector rules (runs from committed scripts) |
+| `.claude/settings.json` | Project env + status line + `enabledPlugins` (the Claude Code plugin set this repo expects) |
 | `.claude/settings.local.json` | Impeccable design-detector hooks (portable, project-relative) |
 | `.claude/skills/openspec-*/`, `.claude/commands/opsx/` | OpenSpec skills + `/opsx:*` commands |
 | `openspec/` | OpenSpec specs, changes, and `config.yaml` |
@@ -129,6 +130,22 @@ run it by hand any time: `bash .devcontainer/install-chrome.sh`.
 
 > Trust prompt: because `.mcp.json` is project-scoped, Claude Code asks you to approve the
 > server the first time you open the project in the container. Approve it once.
+
+## Claude Code plugins (reproducible tooling)
+
+The Claude Code plugins this repo uses are pinned in `.claude/settings.json` under
+`enabledPlugins` (all from the official `claude-plugins-official` marketplace, which Claude
+Code makes known to every user automatically). That declaration is what travels with the repo.
+
+There's no install step to run: when you open the repo and start `claude`, Claude Code
+provisions the enabled plugins from the marketplace on session start — it downloads any that are
+missing into its plugin cache and loads them (the first launch may pause briefly while it
+fetches them). `.claude/settings.json` is the single source of truth for the set.
+
+**Reproducible vs. per-user:** the plugin *set* travels with the repo. Plugins that expose
+authenticated HTTP MCP servers — `github`, `vercel`, `context7` — still need **each user to
+sign in once** (run `/mcp` in Claude Code and authenticate; credentials are stored per-user in
+`~/.claude`, never committed). `playwright` and `chrome-devtools` are local and need no sign-in.
 
 ## GitHub auth: keep credentials on the host and forward them
 
