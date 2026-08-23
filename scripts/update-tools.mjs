@@ -10,7 +10,9 @@
 // global or user ~/.npmrc is modified.
 import { execSync } from 'node:child_process';
 
-const DELAY_DAYS = 7;
+// Days a package must have been published before we install it. Override with the
+// TOOL_UPDATE_DELAY_DAYS env var; defaults to 7 (mirrors the host's package-age policy).
+const DELAY_DAYS = Number(process.env.TOOL_UPDATE_DELAY_DAYS) || 7;
 const before = new Date(Date.now() - DELAY_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
 const env = { ...process.env, npm_config_before: before };

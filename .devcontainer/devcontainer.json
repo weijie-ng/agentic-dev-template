@@ -9,12 +9,13 @@
   // the OpenSpec CLI work out of the box.
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
 
-  // Claude Code CLI + VS Code extension (`:1.0` pins the feature's install script,
-  // not the Claude Code release), and the GitHub CLI so you can authenticate and
-  // push to GitHub from inside the container.
+  // Claude Code CLI + VS Code extension. `:1.0` pins the feature's install script,
+  // not the Claude Code release.
+  // GitHub auth is NOT stored in the container — credentials stay on the host and are
+  // forwarded in (SSH agent forwarding, or VS Code's HTTPS credential forwarding).
+  // See SETUP.md → "GitHub auth: keep credentials on the host and forward them".
   "features": {
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
 
   // Run as non-root. Required if you ever pass --dangerously-skip-permissions,
@@ -27,13 +28,12 @@
   // servers, per-project trust) inside the volume too. ${devcontainerId} scopes
   // the volume to this repo so other projects don't share its login state.
   "mounts": [
-    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
-    // Persist the GitHub CLI login (~/.config/gh) across rebuilds so you only run
-    // `gh auth login` once per repo, not on every rebuild.
-    "source=gh-config-${devcontainerId},target=/home/node/.config/gh,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume"
   ],
   "containerEnv": {
-    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    // Opt out of OpenSpec's anonymous telemetry (also silences its startup notice).
+    "OPENSPEC_TELEMETRY": "0"
   },
 
   // Put the repo-local CLIs on PATH so the bare `openspec` calls the /opsx skills
@@ -44,19 +44,16 @@
   },
 
   // On (re)build:
-  //  1. Fix ownership of the mounted volumes. Named volumes are created root-owned,
-  //     but everything runs as `node`. Without this, Claude Code can't persist
-  //     credentials (login "succeeds" but is forgotten) or write transcripts (EACCES),
-  //     and the GitHub CLI can't save its login under ~/.config/gh.
-  //  2. Install the repo's dependencies (vendors the OpenSpec CLI into node_modules).
-  // impeccable ships as committed skill files under .claude/, so it needs no install.
-  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /home/node/.config 2>/dev/null || true; npm install",
+  //  1. Fix ownership of the ~/.claude volume (created root-owned, but Claude Code runs
+  //     as `node`) so it can persist credentials and write transcripts (avoids EACCES).
+  //  2. Install dependencies, then update impeccable + OpenSpec to the newest versions
+  //     allowed by the delay window. Doing this on REBUILD (not every start) keeps
+  //     container startup fast and quiet — updating each start re-fetches impeccable
+  //     via npx and floods the terminal.
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude 2>/dev/null || true; npm install && (npm run update:tools || true)",
 
-  // On every container start: pull the OpenSpec CLI and impeccable up to the latest
-  // published versions. It's a no-op when they're already current, so it only makes
-  // changes when there's a real update to adopt. `|| true` stops a transient network
-  // hiccup from blocking the container from starting.
-  "postStartCommand": "npm run update:tools || true",
+  // No postStartCommand on purpose: refresh tools any time with `npm run update:tools`,
+  // or by rebuilding the container.
 
   "customizations": {
     "vscode": {

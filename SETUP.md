@@ -35,8 +35,9 @@ Versions are **not pinned long-term**; the setup pulls the newest versions that 
 least 7 days old**. That delay mirrors the host environment's package-age policy and avoids
 adopting a same-day release before it has settled.
 
-- **On every container start**, `postStartCommand` runs `npm run update:tools`, which runs
-  `scripts/update-tools.mjs`. That script:
+- **On each container (re)build**, `postCreateCommand` runs `npm run update:tools`, which runs
+  `scripts/update-tools.mjs`. (It runs on rebuild rather than every start so container startup
+  stays fast and quiet; run it yourself any time with `npm run update:tools`.) That script:
   1. computes `before = now − 7 days` and sets `npm_config_before` for its child processes
      (so npm/npx only resolve versions published on or before that cutoff),
   2. `npm install @fission-ai/openspec@latest` — newest OpenSpec CLI ≥ 7 days old,
@@ -65,9 +66,9 @@ adopting a same-day release before it has settled.
 1. Install **Docker Desktop**, **VS Code**, and the **Dev Containers** extension.
 2. Clone this repo and open it in VS Code.
 3. Command Palette → **Dev Containers: Reopen in Container**.
-4. First build **chowns the `~/.claude` volume to the `node` user** (so credentials and
-   transcripts can be written), installs the **Claude Code CLI**, and runs `npm install`;
-   **each start** then auto-updates impeccable + OpenSpec (7-day delay). `node_modules/.bin`
+4. Each build **chowns the `~/.claude` volume to the `node` user** (so credentials and
+   transcripts can be written), installs the **Claude Code CLI**, runs `npm install`, and
+   auto-updates impeccable + OpenSpec (7-day delay). `node_modules/.bin`
    is on the container `PATH`, so the bare `openspec` the `/opsx` skills call resolves to the
    repo-local CLI.
 5. Run `claude` in a container terminal and sign in once — auth persists across rebuilds.
@@ -103,28 +104,45 @@ container between restarts.
    (recommended), or run via `npm run openspec -- <args>` / `npx openspec <args>`.
 4. Keep tools current with `npm run update:tools`.
 
-## GitHub auth inside the container (push/pull from the container)
+## GitHub auth: keep credentials on the host and forward them
 
-Your host authenticates to GitHub through Windows Git Credential Manager + the keyring —
-there is **no PAT file**, and none of that reaches the Linux container. The dev container
-installs the **GitHub CLI** and persists its login in a volume, so you authenticate **once**:
+**No credentials are stored in the container** (best practice). Your host authenticates to
+GitHub via **Git Credential Manager** over HTTPS; the dev container borrows that per push.
+Nothing is installed or persisted in the container for auth.
 
-1. Rebuild the container (to pick up the `github-cli` feature), then in a container terminal:
+### Method 1 — VS Code HTTPS credential forwarding (recommended, zero setup)
+
+VS Code Dev Containers automatically forwards your host git credentials into the container's
+integrated terminal. Because the host already uses Git Credential Manager and the remote is
+HTTPS, this works out of the box:
+
+1. Open the repo in the container (**Reopen in Container**).
+2. In the **VS Code integrated terminal** (this is where the forwarding is active — Claude
+   Code launched from that terminal inherits it), just run `git push` / `git pull`.
+
+The host's GCM answers the credential request; no token ever lands in the container.
+
+### Method 2 — SSH agent forwarding (editor-independent alternative)
+
+Keeps the private key on the host and forwards the running `ssh-agent` into the container:
+
+1. On the host, make sure the key you use for GitHub is loaded: `ssh-add -l` (add it to your
+   GitHub account if it isn't already), and the OpenSSH agent service is running.
+2. Point this repo at the SSH remote:
    ```bash
-   gh auth login          # choose GitHub.com → HTTPS → "Login with a web browser",
-                          # then open the URL and enter the one-time code
-   gh auth setup-git      # makes git use gh as the credential helper
+   git remote set-url origin git@github.com:weijie-ng/digital-garden.git
    ```
-2. Now `git push` / `git pull` work from inside the container as `weijie-ng`. The login is
-   saved in the `gh-config` volume, so you won't need to repeat it after future rebuilds.
+3. VS Code forwards the agent automatically; `git push` in the container uses it. Works in any
+   container terminal, not just VS Code's.
 
-**Alternatives:**
-- **VS Code credential forwarding** — if you use the VS Code integrated terminal, VS Code
-  often forwards your host git credentials automatically; try `git push` before setting up
-  `gh` at all.
-- **Push from the host** — perfectly fine: develop/run in the container, and run
-  `git push` / `git pull` from a host terminal (already authed as `weijie-ng`). No secrets
-  ever enter the container.
+### Fallback — push from the host
+
+Develop/run in the container, and run `git push` / `git pull` from a host terminal (already
+authed as `weijie-ng`). Nothing enters the container at all.
+
+> The GitHub **MCP server** is separate from git auth: forwarding credentials for `git push`
+> does not give an MCP server a token. If you need the GitHub MCP inside the container, pass a
+> token to it via an env var; otherwise run those GitHub-API actions from the host.
 
 ## First-time git push (from the original machine)
 
