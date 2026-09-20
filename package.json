@@ -9,6 +9,7 @@
   "scripts": {
     "openspec": "openspec",
     "setup:plugins": "node scripts/install-plugins.mjs",
+    "setup:skills": "node scripts/install-skills.mjs",
     "update:tools": "node scripts/update-tools.mjs"
   },
   "devDependencies": {
