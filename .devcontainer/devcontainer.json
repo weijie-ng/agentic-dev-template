@@ -95,7 +95,13 @@
   //     errors. Doing it here means they are on disk before Claude Code ever runs.
   //     Needs no Claude login (public git clones). Idempotent + `|| true`.
   //     See scripts/install-plugins.mjs; re-run any time with `npm run setup:plugins`.
-  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true); (bash .devcontainer/install-chrome.sh || true); (npm run setup:plugins || true)",
+  //  6. Pre-install the Skills-CLI skills this repo relies on that are NOT plugins
+  //     (e.g. no-ai-slop, which ships as a skill with no marketplace manifest, so it
+  //     cannot go in enabledPlugins). Installed globally with --copy into the persisted
+  //     ~/.claude volume, so they load in every session without being committed to the
+  //     repo — same lifecycle as the plugins in step 5. Idempotent + `|| true`.
+  //     See scripts/install-skills.mjs; re-run any time with `npm run setup:skills`.
+  "postCreateCommand": "sudo chown -R node:node /home/node/.claude /commandhistory 2>/dev/null || true; grep -q 'HISTFILE=/commandhistory' ~/.bashrc 2>/dev/null || cat .devcontainer/persist-bash-history.sh >> ~/.bashrc; npm install && (npm run update:tools || true); (bash .devcontainer/install-chrome.sh || true); (npm run setup:plugins || true); (npm run setup:skills || true)",
 
   // No postStartCommand on purpose: refresh tools any time with `npm run update:tools`,
   // or by rebuilding the container.
